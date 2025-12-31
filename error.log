@@ -1,0 +1,35 @@
+[2025-12-31T06:26:33.240Z] Apify start error: Invalid value provided in webhook: Webhook requestUrl must be a valid URL.
+Stack: ApifyApiError: Invalid value provided in webhook: Webhook requestUrl must be a valid URL.
+  clientMethod: ActorClient.start
+  statusCode: 400
+  type: schema-validation
+  attempt: 1
+  httpMethod: post
+  path: /v2/acts/IoSHqwTR9YGhzccez/runs
+  stack: 
+    at makeRequest (/Users/kelvin/Documents/GitHub/prospec/.next/dev/server/chunks/ssr/node_modules_apify-client_ab3a2adc._.js:830:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async ActorClient.start (/Users/kelvin/Documents/GitHub/prospec/.next/dev/server/chunks/ssr/node_modules_apify-client_ab3a2adc._.js:4159:26)
+    at async startCrawl (/Users/kelvin/Documents/GitHub/prospec/.next/dev/server/chunks/ssr/_df639a51._.js:75:26)
+    at async executeActionAndPrepareForRender (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.dev.js:36:3803)
+    at async /Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.dev.js:36:1109
+    at async handleAction (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.dev.js:34:23598)
+    at async renderToHTMLOrFlightImpl (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.dev.js:41:42106)
+    at async doRender (/Users/kelvin/Documents/GitHub/prospec/.next/dev/server/chunks/ssr/node_modules_next_dist_e812062d._.js:2934:28)
+    at async AppPageRouteModule.handleResponse (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.dev.js:43:64241)
+    at async handleResponse (/Users/kelvin/Documents/GitHub/prospec/.next/dev/server/chunks/ssr/node_modules_next_dist_e812062d._.js:3140:32)
+    at async Module.handler (/Users/kelvin/Documents/GitHub/prospec/.next/dev/server/chunks/ssr/node_modules_next_dist_e812062d._.js:3511:20)
+    at async DevServer.renderToResponseWithComponentsImpl (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/base-server.js:909:17)
+    at async /Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/Users/kelvin/Documents/GitHub/prospec/node_modules/next/dist/server/lib/start-server.js:226:13)
+  data: undefined
