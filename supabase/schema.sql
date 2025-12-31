@@ -83,6 +83,22 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Function to validate email domain
+create or replace function public.validate_email_domain()
+returns trigger as $$
+begin
+  if (new.email !~* '@(arktop\.com|crownsync\.ai)$') then
+    raise exception 'Registration is restricted to authorized domains only.';
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Trigger for email domain validation
+create trigger on_auth_user_signing_up
+  before insert on auth.users
+  for each row execute procedure public.validate_email_domain();
+
 -- RPC for credit deduction
 create or replace function public.deduct_credits(
   p_user_id uuid,

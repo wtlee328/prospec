@@ -26,15 +26,26 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+
+  // Domain restriction
+  const allowedDomains = ['arktop.com', 'crownsync.ai']
+  const domain = email.split('@')[1]
+
+  if (!allowedDomains.includes(domain?.toLowerCase())) {
+    redirect('/login?error=Registration is restricted to authorized domains only.')
+  }
+
   const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+    email: email,
+    password: password,
   }
 
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-    redirect('/login?error=Could not authenticate user')
+    redirect(`/login?error=${error.message}`)
   }
 
   revalidatePath('/', 'layout')

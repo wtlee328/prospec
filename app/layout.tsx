@@ -17,7 +17,11 @@ export const metadata: Metadata = {
   title: "Prospec | B2B Lead Generation",
   description: "Find and verify leads with ease using Prospec.",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.svg", type: "image/svg+xml", rel: "shortcut icon" }
+    ],
+    apple: "/favicon.svg",
   },
 };
 
