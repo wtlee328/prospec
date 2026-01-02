@@ -14,10 +14,91 @@ import {
   ExternalLink, CheckCircle2, 
   Search, Zap, Cpu, 
   Database, Activity,
-  LayoutDashboard
+  LayoutDashboard,
+  Check,
+  ChevronsUpDown,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { cn } from '@/lib/utils'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+const INDUSTRIES = [
+  "Information Technology & Services",
+  "Construction",
+  "Marketing & Advertising",
+  "Health, Wellness & Fitness",
+  "Pharmaceuticals",
+  "Biotechnology",
+  "Real Estate",
+  "Management Consulting",
+  "Computer Software",
+  "Internet",
+  "Semiconductors",
+  "Retail",
+  "Financial Services",
+  "Consumer Services",
+  "Hospital & Health Care",
+  "Automotive",
+  "Restaurants",
+  "Education Management",
+  "Food & Beverages",
+  "Design",
+  "Apparel & Fashion",
+  "Import & Export",
+  "Hospitality",
+  "Accounting",
+  "Events Services",
+  "Luxury Goods & Jewelry",
+  "Cosmetics",
+  "Logistics & Supply Chain",
+  "Warehousing",
+  "Package / Freight Delivery"
+]
+
+const SENIORITY_LEVELS = [
+  "Owner", "Partner", "CXO", "VP", "Director", "Manager", "Senior", "Entry", "Unpaid"
+]
+
+const FUNCTIONAL_LEVELS = [
+  "Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Product", "Support", "Legal", "Design"
+]
+
+const EMAIL_STATUSES = [
+  "Verified", "Guessed"
+]
+
+const COMPANY_SIZES = [
+  "1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000", "10001+"
+]
+
+const FUNDING_ROUNDS = [
+  "Seed", "Series A", "Series B", "Series C", "Series D", "Series E", "IPO", "Private Equity", "Debt Financing"
+]
+
+const REVENUE_RANGES = [
+  "100K", "500K", "1M", "5M", "10M", "25M", "50M", "100M", "500M", "1B", "5B", "10B"
+]
 
 const MOCK_LEADS = [
   { name: 'Sarah Chen', title: 'Senior Project Manager', company: 'Google', location: 'Mountain View, CA', email: 's***@google.com' },
@@ -43,12 +124,47 @@ export function Finder() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [view, setView] = useState<'logs' | 'results'>('logs')
   
-  // Form State
-  const [companyName, setCompanyName] = useState('')
+  // Form State - Default Fields
+  const [fetchCount, setFetchCount] = useState(100)
+  const [runName, setRunName] = useState('')
   const [jobTitleInput, setJobTitleInput] = useState('')
   const [jobTitles, setJobTitles] = useState<string[]>([])
-  const [location, setLocation] = useState('')
-  const [industry, setIndustry] = useState('')
+  const [locationInput, setLocationInput] = useState('')
+  const [locations, setLocations] = useState<string[]>([])
+  const [cityInput, setCityInput] = useState('')
+  const [cities, setCities] = useState<string[]>([])
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([])
+  const [industryOpen, setIndustryOpen] = useState(false)
+  const [keywordInput, setKeywordInput] = useState('')
+  const [keywords, setKeywords] = useState<string[]>([])
+  
+  // Advanced Filters Toggle
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  
+  // Advanced Fields
+  const [companyInput, setCompanyInput] = useState('')
+  const [companies, setCompanies] = useState<string[]>([])
+  
+  // Excluded Fields Inputs
+  const [excludedJobTitleInput, setExcludedJobTitleInput] = useState('')
+  const [excludedJobTitles, setExcludedJobTitles] = useState<string[]>([])
+  const [excludedLocationInput, setExcludedLocationInput] = useState('')
+  const [excludedLocations, setExcludedLocations] = useState<string[]>([])
+  const [excludedCityInput, setExcludedCityInput] = useState('')
+  const [excludedCities, setExcludedCities] = useState<string[]>([])
+  const [excludedKeywordInput, setExcludedKeywordInput] = useState('')
+  const [excludedKeywords, setExcludedKeywords] = useState<string[]>([])
+  
+  // Dropdown/Select Fields
+  const [selectedSeniorities, setSelectedSeniorities] = useState<string[]>([])
+  const [selectedFunctions, setSelectedFunctions] = useState<string[]>([])
+  const [selectedEmailStatuses, setSelectedEmailStatuses] = useState<string[]>([])
+  const [selectedExcludedIndustries, setSelectedExcludedIndustries] = useState<string[]>([])
+  const [excludedIndustryOpen, setExcludedIndustryOpen] = useState(false)
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([])
+  const [selectedFundingRounds, setSelectedFundingRounds] = useState<string[]>([])
+  const [minRevenue, setMinRevenue] = useState<string>('')
+  const [maxRevenue, setMaxRevenue] = useState<string>('')
   
   // Activity Tracker state
   const [logs, setLogs] = useState<LogItem[]>([
@@ -61,10 +177,13 @@ export function Finder() {
       setIsAuthenticated(!!user)
       if (!user) {
         // Prefill for demo
-        setCompanyName('Google')
+        setRunName('Demo Search - Google')
+        setFetchCount(100)
         setJobTitles(['Project Manager', 'Software Engineer'])
-        setLocation('California, USA')
-        setIndustry('Technology')
+        setLocations(['California, USA'])
+        setCities(['San Francisco', 'Mountain View'])
+        setSelectedIndustries(['Information Technology & Services'])
+        setKeywords(['AI', 'Cloud'])
         setLogs(prev => [...prev, { 
           message: 'Demo mode active. Sample data preloaded for Google search.', 
           type: 'info', 
@@ -92,12 +211,128 @@ export function Finder() {
     setJobTitles(jobTitles.filter(t => t !== title))
   }
 
+  const handleAddCompany = () => {
+    if (companyInput.trim() && !companies.includes(companyInput.trim())) {
+      setCompanies([...companies, companyInput.trim()])
+      setCompanyInput('')
+    }
+  }
+
+  const handleRemoveCompany = (name: string) => {
+    setCompanies(companies.filter(c => c !== name))
+  }
+
+  const handleAddLocation = () => {
+    if (locationInput.trim() && !locations.includes(locationInput.trim())) {
+      setLocations([...locations, locationInput.trim()])
+      setLocationInput('')
+    }
+  }
+
+  const handleRemoveLocation = (loc: string) => {
+    setLocations(locations.filter(l => l !== loc))
+  }
+
+  const handleAddCity = () => {
+    if (cityInput.trim() && !cities.includes(cityInput.trim())) {
+      setCities([...cities, cityInput.trim()])
+      setCityInput('')
+    }
+  }
+
+  const handleRemoveCity = (city: string) => {
+    setCities(cities.filter(c => c !== city))
+  }
+
+  const handleAddKeyword = () => {
+    if (keywordInput.trim() && !keywords.includes(keywordInput.trim())) {
+      setKeywords([...keywords, keywordInput.trim()])
+      setKeywordInput('')
+    }
+  }
+
+  const handleRemoveKeyword = (keyword: string) => {
+    setKeywords(keywords.filter(k => k !== keyword))
+  }
+
+  // Helper functions for excluded/advanced fields
+  const handleAddExcludedJobTitle = () => {
+    if (excludedJobTitleInput.trim() && !excludedJobTitles.includes(excludedJobTitleInput.trim())) {
+      setExcludedJobTitles([...excludedJobTitles, excludedJobTitleInput.trim()])
+      setExcludedJobTitleInput('')
+    }
+  }
+
+  const handleRemoveExcludedJobTitle = (title: string) => {
+    setExcludedJobTitles(excludedJobTitles.filter(t => t !== title))
+  }
+
+  const handleAddExcludedLocation = () => {
+    if (excludedLocationInput.trim() && !excludedLocations.includes(excludedLocationInput.trim())) {
+      setExcludedLocations([...excludedLocations, excludedLocationInput.trim()])
+      setExcludedLocationInput('')
+    }
+  }
+
+  const handleRemoveExcludedLocation = (loc: string) => {
+    setExcludedLocations(excludedLocations.filter(l => l !== loc))
+  }
+
+  const handleAddExcludedCity = () => {
+    if (excludedCityInput.trim() && !excludedCities.includes(excludedCityInput.trim())) {
+      setExcludedCities([...excludedCities, excludedCityInput.trim()])
+      setExcludedCityInput('')
+    }
+  }
+
+  const handleRemoveExcludedCity = (city: string) => {
+    setExcludedCities(excludedCities.filter(c => c !== city))
+  }
+
+  const handleAddExcludedKeyword = () => {
+    if (excludedKeywordInput.trim() && !excludedKeywords.includes(excludedKeywordInput.trim())) {
+      setExcludedKeywords([...excludedKeywords, excludedKeywordInput.trim()])
+      setExcludedKeywordInput('')
+    }
+  }
+
+  const handleRemoveExcludedKeyword = (keyword: string) => {
+    setExcludedKeywords(excludedKeywords.filter(k => k !== keyword))
+  }
+
   const handleClearInput = () => {
-    setCompanyName('')
+    setFetchCount(100)
+    setRunName('')
+    setCompanyInput('')
+    setCompanies([])
     setJobTitleInput('')
     setJobTitles([])
-    setLocation('')
-    setIndustry('')
+    setLocationInput('')
+    setLocations([])
+    setCityInput('')
+    setCities([])
+    setSelectedIndustries([])
+    setKeywordInput('')
+    setKeywords([])
+    
+    // Clear Advanced Fields
+    setExcludedJobTitleInput('')
+    setExcludedJobTitles([])
+    setExcludedLocationInput('')
+    setExcludedLocations([])
+    setExcludedCityInput('')
+    setExcludedCities([])
+    setExcludedKeywordInput('')
+    setExcludedKeywords([])
+    setSelectedSeniorities([])
+    setSelectedFunctions([])
+    setSelectedEmailStatuses([])
+    setSelectedExcludedIndustries([])
+    setSelectedSizes([])
+    setSelectedFundingRounds([])
+    setMinRevenue('')
+    setMaxRevenue('')
+    
     setError('')
     setView('logs')
     setLogs([{ 
@@ -117,7 +352,7 @@ export function Finder() {
 
   const handleStartCrawl = async () => {
     setError('')
-    if (jobTitles.length === 0 && !companyName) {
+    if (jobTitles.length === 0 && companies.length === 0) {
       setError('Please provide at least a Company Name or Job Title.')
       return
     }
@@ -126,7 +361,7 @@ export function Finder() {
     setView('logs')
     
     if (!isAuthenticated) {
-      addLog(`Initiating search for ${companyName || jobTitles[0]}`, 'target')
+      addLog(`Initiating search for ${companies[0] || jobTitles[0]}`, 'target')
       
       const sequence = [
         { msg: 'Connecting to Prospec Crawl Cluster...', type: 'process' as const, delay: 600 },
@@ -157,10 +392,26 @@ export function Finder() {
 
     try {
       await startCrawl({
-        companyName,
+        fetchCount,
+        runName,
+        companyNames: companies,
         jobTitles,
-        locations: location ? [location] : [],
-        industries: industry ? [industry] : []
+        excludedJobTitles,
+        locations,
+        cities,
+        excludedLocations,
+        excludedCities,
+        industries: selectedIndustries,
+        excludedIndustries: selectedExcludedIndustries,
+        keywords,
+        excludedKeywords,
+        companySize: selectedSizes,
+        seniorityLevel: selectedSeniorities,
+        functionalLevel: selectedFunctions,
+        emailStatus: selectedEmailStatuses,
+        funding: selectedFundingRounds,
+        minRevenue,
+        maxRevenue
       })
       router.push('/runs')
     } catch (err: any) {
@@ -179,89 +430,714 @@ export function Finder() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-280px)] min-h-[500px] gap-8 p-1">
+    <div className="flex h-[calc(100vh-140px)] min-h-[600px] gap-6 p-1 pb-12">
       {/* Left Panel: Inputs */}
       <div className="w-1/2 flex flex-col h-full">
         <Card className="flex flex-col h-full border border-border/40 shadow-xl bg-card overflow-hidden transition-shadow duration-300">
-          <CardHeader className="flex-none border-b bg-muted/10 pb-5 px-8 pt-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-bold tracking-tight bg-clip-text text-foreground">Find Leads</CardTitle>
-                <CardDescription className="text-sm mt-1">Define your target audience to begin the extraction.</CardDescription>
+          <CardContent className="space-y-6 flex-1 overflow-y-auto p-8 scrollbar-thin">
+            {/* Fetch Count & Run Name */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label htmlFor="fetchCount" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                  Leads to Fetch
+                </Label>
+                <Input
+                  id="fetchCount"
+                  type="number"
+                  min={1}
+                  max={10000}
+                  value={fetchCount}
+                  onChange={(e) => setFetchCount(Math.min(10000, Math.max(1, parseInt(e.target.value) || 100)))}
+                  className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
+                />
+                <p className="text-[10px] text-muted-foreground">Min: 1, Max: 10,000</p>
               </div>
-              {!isAuthenticated && isAuthenticated !== null && (
-                <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 animate-pulse font-semibold px-3 py-1 text-[10px] uppercase tracking-wider">
-                  Demo Mode
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-8 flex-1 overflow-y-auto p-8 scrollbar-thin">
-            <div className="space-y-3">
-              <Label htmlFor="company" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Target Company</Label>
-              <Input 
-                id="company" 
-                placeholder="Google, Stripe, OpenAI..." 
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-                className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
-              />
+
+              <div className="space-y-3">
+                <Label htmlFor="runName" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                  Run Name
+                </Label>
+                <Input
+                  id="runName"
+                  placeholder="e.g., Q1 Tech Leads"
+                  value={runName}
+                  onChange={(e) => setRunName(e.target.value)}
+                  className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
+                />
+              </div>
             </div>
 
+            {/* Job Titles */}
             <div className="space-y-3">
-              <Label htmlFor="jobTitle" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Candidate Titles</Label>
+              <Label htmlFor="jobTitle" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                Job Titles
+              </Label>
               <div className="flex gap-2">
-                <Input 
-                  id="jobTitle" 
-                  placeholder="Head of Engineering..." 
+                <Input
+                  id="jobTitle"
+                  placeholder="e.g., Software Engineer, Product Manager"
                   value={jobTitleInput}
-                  onChange={e => setJobTitleInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddJobTitle()}
+                  onChange={(e) => setJobTitleInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddJobTitle()}
                   className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
                 />
                 <Button variant="outline" size="icon" onClick={handleAddJobTitle} type="button" className="shrink-0 h-12 w-12 border-border/40 hover:bg-muted/50">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-2 mt-3">
-                {jobTitles.map(title => (
-                  <Badge key={title} variant="secondary" className="flex items-center gap-2 py-1.5 px-3 shadow-none border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors font-medium rounded-md">
-                    {title}
-                    <X className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors" onClick={() => handleRemoveJobTitle(title)} />
-                  </Badge>
-                ))}
+              {jobTitles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {jobTitles.map(title => (
+                    <Badge key={title} variant="secondary" className="flex items-center gap-2 py-1.5 pl-3 pr-2 shadow-none border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors font-medium rounded-md">
+                      <span>{title}</span>
+                      <button
+                        type="button"
+                        className="ml-0.5 rounded-sm hover:bg-muted transition-colors p-0.5"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemoveJobTitle(title);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Location & City Grid */}
+            <div className="grid grid-cols-2 gap-6">
+              {/* Locations */}
+              <div className="space-y-3">
+                <Label htmlFor="location" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                  Location
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="location"
+                    placeholder="e.g., California, USA"
+                    value={locationInput}
+                    onChange={(e) => setLocationInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
+                    className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
+                  />
+                  <Button variant="outline" size="icon" onClick={handleAddLocation} type="button" className="shrink-0 h-12 w-12 border-border/40 hover:bg-muted/50">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {locations.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {locations.map(loc => (
+                      <Badge key={loc} variant="secondary" className="flex items-center gap-2 py-1.5 pl-3 pr-2 shadow-none border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors font-medium rounded-md text-xs">
+                        <span>{loc}</span>
+                        <button
+                          type="button"
+                          className="ml-0.5 rounded-sm hover:bg-muted transition-colors p-0.5"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRemoveLocation(loc);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Cities */}
+              <div className="space-y-3">
+                <Label htmlFor="city" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                  City
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="city"
+                    placeholder="e.g., San Francisco"
+                    value={cityInput}
+                    onChange={(e) => setCityInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCity()}
+                    className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
+                  />
+                  <Button variant="outline" size="icon" onClick={handleAddCity} type="button" className="shrink-0 h-12 w-12 border-border/40 hover:bg-muted/50">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {cities.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {cities.map(city => (
+                      <Badge key={city} variant="secondary" className="flex items-center gap-2 py-1.5 pl-3 pr-2 shadow-none border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors font-medium rounded-md text-xs">
+                        <span>{city}</span>
+                        <button
+                          type="button"
+                          className="ml-0.5 rounded-sm hover:bg-muted transition-colors p-0.5"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRemoveCity(city);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-8">
+            {/* Industries & Keywords Grid */}
+            <div className="grid grid-cols-2 gap-6">
+              {/* Industries */}
               <div className="space-y-3">
-                <Label htmlFor="location" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Location</Label>
-                <Input 
-                  id="location" 
-                  placeholder="San Francisco, Remote..." 
-                  value={location}
-                  onChange={e => setLocation(e.target.value)}
-                  className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
-                />
+                <Label htmlFor="industry" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                  Industries
+                </Label>
+                <Popover open={industryOpen} onOpenChange={setIndustryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={industryOpen}
+                      className="w-full justify-between bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all hover:bg-muted/30 font-normal px-4"
+                    >
+                      <span className="truncate text-muted-foreground">
+                        {selectedIndustries.length > 0
+                          ? `${selectedIndustries.length} selected`
+                          : "Select industries..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command className="border-none">
+                      <CommandInput placeholder="Search industry..." className="h-11 shadow-none border-none focus:ring-0" />
+                      <CommandList className="max-h-[300px] overflow-y-auto scrollbar-thin">
+                        <CommandEmpty>No industry found.</CommandEmpty>
+                        <CommandGroup>
+                          {INDUSTRIES.map((ind) => (
+                            <CommandItem
+                              key={ind}
+                              value={ind}
+                              onSelect={() => {
+                                setSelectedIndustries(prev =>
+                                  prev.includes(ind)
+                                    ? prev.filter(i => i !== ind)
+                                    : [...prev, ind]
+                                )
+                              }}
+                              className="flex items-start gap-2 px-4 py-3 cursor-pointer hover:bg-muted font-medium"
+                            >
+                              <div className={cn(
+                                "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border border-primary transition-colors mt-0.5",
+                                selectedIndustries.includes(ind) ? "bg-primary text-primary-foreground" : "opacity-50"
+                              )}>
+                                {selectedIndustries.includes(ind) && <Check className="h-3 w-3" />}
+                              </div>
+                              <span className="flex-1">{ind}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {selectedIndustries.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {selectedIndustries.map(ind => (
+                      <Badge
+                        key={ind}
+                        variant="secondary"
+                        className="text-[10px] py-0 pl-2 pr-1 h-6 bg-primary/5 text-primary border-primary/10 hover:bg-primary/10 transition-colors flex items-center gap-1 font-semibold"
+                      >
+                        <span>{ind}</span>
+                        <button
+                          type="button"
+                          className="ml-0.5 rounded-sm hover:bg-primary/20 p-0.5 transition-colors"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedIndustries(prev => prev.filter(i => i !== ind));
+                          }}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Keywords */}
               <div className="space-y-3">
-                <Label htmlFor="industry" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Industry</Label>
-                <Input 
-                  id="industry" 
-                  placeholder="SaaS, AI, Fintech..." 
-                  value={industry}
-                  onChange={e => setIndustry(e.target.value)}
-                  className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
-                />
+                <Label htmlFor="keywords" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                  Keywords
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="keywords"
+                    placeholder="e.g., AI, Cloud, SaaS"
+                    value={keywordInput}
+                    onChange={(e) => setKeywordInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
+                    className="bg-muted/20 focus:bg-background border-border/40 h-12 text-sm transition-all focus:ring-1 focus:ring-primary/20"
+                  />
+                  <Button variant="outline" size="icon" onClick={handleAddKeyword} type="button" className="shrink-0 h-12 w-12 border-border/40 hover:bg-muted/50">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {keywords.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {keywords.map(keyword => (
+                      <Badge key={keyword} variant="secondary" className="flex items-center gap-2 py-1.5 pl-3 pr-2 shadow-none border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors font-medium rounded-md text-xs">
+                        <span>{keyword}</span>
+                        <button
+                          type="button"
+                          className="ml-0.5 rounded-sm hover:bg-muted transition-colors p-0.5"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRemoveKeyword(keyword);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Advanced Filters Toggle */}
+            <div className="pt-4 border-t border-border/40">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full justify-between h-10 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                <span>Advanced Filters</span>
+                {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            {/* Advanced Filters Section */}
+            {showAdvanced && (
+              <div className="space-y-6 pt-4 border-t border-border/40">
+                {/* Contact Filters */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/90 flex items-center gap-2">
+                    <div className="h-px bg-border/60 flex-1" />
+                    Contact Filters
+                    <div className="h-px bg-border/60 flex-1" />
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Exclude Job Titles</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="e.g., Intern, Student, Assistant" 
+                        value={excludedJobTitleInput}
+                        onChange={e => setExcludedJobTitleInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleAddExcludedJobTitle()}
+                        className="bg-muted/20 focus:bg-background border-border/40 h-10 text-sm"
+                      />
+                      <Button variant="outline" size="icon" onClick={handleAddExcludedJobTitle} type="button" className="shrink-0 h-10 w-10 border-border/40">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {excludedJobTitles.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {excludedJobTitles.map(title => (
+                          <Badge key={title} variant="destructive" className="flex items-center gap-2 py-0.5 px-2 text-xs opacity-80 hover:opacity-100">
+                            <span>{title}</span>
+                            <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveExcludedJobTitle(title)} />
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Seniority</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-10 text-sm bg-muted/20 border-border/40 font-normal px-3">
+                            <span className="truncate text-muted-foreground">{selectedSeniorities.length ? `${selectedSeniorities.length} selected` : 'Select seniority...'}</span>
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search..." className="h-9" />
+                            <CommandList>
+                              <CommandEmpty>No results.</CommandEmpty>
+                              <CommandGroup>
+                                {SENIORITY_LEVELS.map((level) => (
+                                  <CommandItem key={level} value={level} onSelect={() => {
+                                    setSelectedSeniorities(prev => prev.includes(level) ? prev.filter(i => i !== level) : [...prev, level])
+                                  }}>
+                                    <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", selectedSeniorities.includes(level) ? "bg-primary text-primary-foreground" : "opacity-50")}>
+                                      {selectedSeniorities.includes(level) && <Check className="h-3 w-3" />}
+                                    </div>
+                                    {level}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Department</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-10 text-sm bg-muted/20 border-border/40 font-normal px-3">
+                            <span className="truncate text-muted-foreground">{selectedFunctions.length ? `${selectedFunctions.length} selected` : 'Select department...'}</span>
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search..." className="h-9" />
+                            <CommandList>
+                              <CommandEmpty>No results.</CommandEmpty>
+                              <CommandGroup>
+                                {FUNCTIONAL_LEVELS.map((level) => (
+                                  <CommandItem key={level} value={level} onSelect={() => {
+                                    setSelectedFunctions(prev => prev.includes(level) ? prev.filter(i => i !== level) : [...prev, level])
+                                  }}>
+                                    <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", selectedFunctions.includes(level) ? "bg-primary text-primary-foreground" : "opacity-50")}>
+                                      {selectedFunctions.includes(level) && <Check className="h-3 w-3" />}
+                                    </div>
+                                    {level}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Email Status</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between h-10 text-sm bg-muted/20 border-border/40 font-normal px-3">
+                          <span className="truncate text-muted-foreground">{selectedEmailStatuses.length ? `${selectedEmailStatuses.length} selected` : 'Select status...'}</span>
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0" align="start">
+                        <Command>
+                          <CommandList>
+                            <CommandGroup>
+                              {EMAIL_STATUSES.map((status) => (
+                                <CommandItem key={status} value={status} onSelect={() => {
+                                  setSelectedEmailStatuses(prev => prev.includes(status) ? prev.filter(i => i !== status) : [...prev, status])
+                                }}>
+                                  <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", selectedEmailStatuses.includes(status) ? "bg-primary text-primary-foreground" : "opacity-50")}>
+                                    {selectedEmailStatuses.includes(status) && <Check className="h-3 w-3" />}
+                                  </div>
+                                  {status}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* Location Filters */}
+                <div className="space-y-4 pt-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/90 flex items-center gap-2">
+                    <div className="h-px bg-border/60 flex-1" />
+                    Location Exclusion
+                    <div className="h-px bg-border/60 flex-1" />
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Exclude Locations</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Region/Country" 
+                          value={excludedLocationInput}
+                          onChange={e => setExcludedLocationInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleAddExcludedLocation()}
+                          className="bg-muted/20 focus:bg-background border-border/40 h-10 text-sm"
+                        />
+                        <Button variant="outline" size="icon" onClick={handleAddExcludedLocation} type="button" className="shrink-0 h-10 w-10 border-border/40">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {excludedLocations.length > 0 && (
+                         <div className="flex flex-wrap gap-2 mt-2">
+                           {excludedLocations.map(loc => (
+                             <Badge key={loc} variant="destructive" className="flex items-center gap-2 py-0.5 px-2 text-xs opacity-80 hover:opacity-100">
+                               <span>{loc}</span>
+                               <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveExcludedLocation(loc)} />
+                             </Badge>
+                           ))}
+                         </div>
+                       )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Exclude Cities</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="City" 
+                          value={excludedCityInput}
+                          onChange={e => setExcludedCityInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleAddExcludedCity()}
+                          className="bg-muted/20 focus:bg-background border-border/40 h-10 text-sm"
+                        />
+                        <Button variant="outline" size="icon" onClick={handleAddExcludedCity} type="button" className="shrink-0 h-10 w-10 border-border/40">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {excludedCities.length > 0 && (
+                         <div className="flex flex-wrap gap-2 mt-2">
+                           {excludedCities.map(city => (
+                             <Badge key={city} variant="destructive" className="flex items-center gap-2 py-0.5 px-2 text-xs opacity-80 hover:opacity-100">
+                               <span>{city}</span>
+                               <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveExcludedCity(city)} />
+                             </Badge>
+                           ))}
+                         </div>
+                       )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company Filters */}
+                <div className="space-y-4 pt-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/90 flex items-center gap-2">
+                    <div className="h-px bg-border/60 flex-1" />
+                    Company Filters
+                    <div className="h-px bg-border/60 flex-1" />
+                  </h4>
+                  
+                  {/* Include Company Domains here */}
+                  <div className="space-y-3">
+                      <Label htmlFor="company" className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
+                        Company Domains
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="company"
+                          placeholder="e.g., google.com, apple.com"
+                          value={companyInput}
+                          onChange={(e) => setCompanyInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddCompany()}
+                          className="bg-muted/20 focus:bg-background border-border/40 h-10 text-sm"
+                        />
+                        <Button variant="outline" size="icon" onClick={handleAddCompany} type="button" className="shrink-0 h-10 w-10 border-border/40">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {companies.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {companies.map(name => (
+                            <Badge key={name} variant="secondary" className="flex items-center gap-2 py-1.5 pl-3 pr-2 shadow-none border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors font-medium rounded-md text-xs">
+                              <span>{name}</span>
+                              <button
+                                type="button"
+                                className="ml-0.5 rounded-sm hover:bg-muted transition-colors p-0.5"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleRemoveCompany(name);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Exclude Industries</Label>
+                       <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-10 text-sm bg-muted/20 border-border/40 font-normal px-3">
+                            <span className="truncate text-muted-foreground">{selectedExcludedIndustries.length ? `${selectedExcludedIndustries.length} excluded` : 'Select...'}</span>
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search..." className="h-9" />
+                            <CommandList>
+                              <CommandEmpty>No results.</CommandEmpty>
+                              <CommandGroup>
+                                {INDUSTRIES.map((ind) => (
+                                  <CommandItem key={ind} value={ind} onSelect={() => {
+                                    setSelectedExcludedIndustries(prev => prev.includes(ind) ? prev.filter(i => i !== ind) : [...prev, ind])
+                                  }}>
+                                    <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", selectedExcludedIndustries.includes(ind) ? "bg-primary text-primary-foreground" : "opacity-50")}>
+                                      {selectedExcludedIndustries.includes(ind) && <Check className="h-3 w-3" />}
+                                    </div>
+                                    {ind}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Exclude Keywords</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Keyword" 
+                          value={excludedKeywordInput}
+                          onChange={e => setExcludedKeywordInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleAddExcludedKeyword()}
+                          className="bg-muted/20 focus:bg-background border-border/40 h-10 text-sm"
+                        />
+                        <Button variant="outline" size="icon" onClick={handleAddExcludedKeyword} type="button" className="shrink-0 h-10 w-10 border-border/40">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {excludedKeywords.length > 0 && (
+                         <div className="flex flex-wrap gap-2 mt-2">
+                           {excludedKeywords.map(k => (
+                             <Badge key={k} variant="destructive" className="flex items-center gap-2 py-0.5 px-2 text-xs opacity-80 hover:opacity-100">
+                               <span>{k}</span>
+                               <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveExcludedKeyword(k)} />
+                             </Badge>
+                           ))}
+                         </div>
+                       )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Company Size</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-10 text-sm bg-muted/20 border-border/40 font-normal px-3">
+                            <span className="truncate text-muted-foreground">{selectedSizes.length ? `${selectedSizes.length} selected` : 'Select size...'}</span>
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0" align="start">
+                          <Command>
+                            <CommandList>
+                              <CommandGroup>
+                                {COMPANY_SIZES.map((size) => (
+                                  <CommandItem key={size} value={size} onSelect={() => {
+                                    setSelectedSizes(prev => prev.includes(size) ? prev.filter(i => i !== size) : [...prev, size])
+                                  }}>
+                                    <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", selectedSizes.includes(size) ? "bg-primary text-primary-foreground" : "opacity-50")}>
+                                      {selectedSizes.includes(size) && <Check className="h-3 w-3" />}
+                                    </div>
+                                    {size}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Funding</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-10 text-sm bg-muted/20 border-border/40 font-normal px-3">
+                            <span className="truncate text-muted-foreground">{selectedFundingRounds.length ? `${selectedFundingRounds.length} selected` : 'Select funding...'}</span>
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search..." className="h-9" />
+                            <CommandList>
+                              <CommandEmpty>No results.</CommandEmpty>
+                              <CommandGroup>
+                                {FUNDING_ROUNDS.map((round) => (
+                                  <CommandItem key={round} value={round} onSelect={() => {
+                                    setSelectedFundingRounds(prev => prev.includes(round) ? prev.filter(i => i !== round) : [...prev, round])
+                                  }}>
+                                    <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", selectedFundingRounds.includes(round) ? "bg-primary text-primary-foreground" : "opacity-50")}>
+                                      {selectedFundingRounds.includes(round) && <Check className="h-3 w-3" />}
+                                    </div>
+                                    {round}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revenue Filters */}
+                <div className="space-y-4 pt-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground/90 flex items-center gap-2">
+                    <div className="h-px bg-border/60 flex-1" />
+                    Revenue Filters
+                    <div className="h-px bg-border/60 flex-1" />
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Min Revenue</Label>
+                       <Select value={minRevenue} onValueChange={setMinRevenue}>
+                         <SelectTrigger className="h-10 text-sm bg-muted/20 border-border/40">
+                           <SelectValue placeholder="Select min..." />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {REVENUE_RANGES.map((rev) => (
+                             <SelectItem key={rev} value={rev}>{rev}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                    </div>
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Max Revenue</Label>
+                       <Select value={maxRevenue} onValueChange={setMaxRevenue}>
+                         <SelectTrigger className="h-10 text-sm bg-muted/20 border-border/40">
+                           <SelectValue placeholder="Select max..." />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {REVENUE_RANGES.map((rev) => (
+                             <SelectItem key={rev} value={rev}>{rev}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {error && <div className="text-xs text-destructive bg-destructive/5 p-4 rounded-xl border border-destructive/10 flex items-center gap-3 animate-in fade-in slide-in-from-top-1">
               <div className="shrink-0 h-1.5 w-1.5 rounded-full bg-destructive" />
               {error}
             </div>}
           </CardContent>
-          <CardFooter className="flex-none gap-4 p-8 border-t bg-muted/5">
+          <CardFooter className="flex-none gap-2 p-6 border-t bg-muted/5">
             {isAuthenticated !== false && (
               <Button variant="ghost" className="flex-1 font-semibold h-12 text-muted-foreground hover:text-foreground" onClick={handleClearInput} disabled={loading}>
                 Reset

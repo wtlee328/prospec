@@ -17,7 +17,8 @@ export async function getApifyUsage() {
     }
 
     try {
-        const response = await fetch(`https://api.apify.com/v2/users/me/usage/monthly`, {
+        // The limits endpoint is the most reliable source for "current usage vs limit"
+        const response = await fetch(`https://api.apify.com/v2/users/me/limits`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             },
@@ -29,37 +30,38 @@ export async function getApifyUsage() {
 
         if (!response.ok) {
             const text = await response.text();
-            console.error('Apify usage fetch failed:', response.status, text);
+            console.error('Apify limits fetch failed:', response.status, text);
             return { usageTotalUsd: 0, limitUsd: 0, error: true };
         }
 
         const json = await response.json();
-        const usageData = json.data || {};
+        const data = json.data || {};
+        
+        // usage data is typically in data.current.monthlyUsageUsd
+        const usageTotalUsd = data.current?.monthlyUsageUsd ?? data.current?.monthlyUsageUSD ?? 0;
+        
+        // limit is in data.limits.monthlyUsageUsd or similar
+        let limitUsd = data.limits?.monthlyUsageUsd ?? data.limits?.monthlyUsageUSD ?? 0;
 
-    // Get limits from /users/me as well for more reliable info
-    const meResponse = await fetch(`https://api.apify.com/v2/users/me`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        next: { 
-            revalidate: 60,
-            tags: ['apify-usage']
+        // Fallback to /users/me if limits doesn't have it (some plans differ)
+        if (!limitUsd) {
+            const meResponse = await fetch(`https://api.apify.com/v2/users/me`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                next: { revalidate: 60, tags: ['apify-usage'] }
+            });
+            if (meResponse.ok) {
+                const meJson = await meResponse.json();
+                limitUsd = meJson.data?.limits?.monthlyUsageUsd || 
+                           meJson.data?.plan?.monthlyUsageCreditsUsd || 
+                           meJson.data?.plan?.maxMonthlyUsageUsd || 0;
+            }
         }
-    });
-    
-    let limitUsd = 0;
-    if (meResponse.ok) {
-        const meJson = await meResponse.json();
-        // Check both limits (if exists) and plan credits
-        limitUsd = meJson.data?.limits?.monthlyUsageUsd || 
-                   meJson.data?.plan?.monthlyUsageCreditsUsd || 
-                   meJson.data?.plan?.maxMonthlyUsageUsd || 0;
-    }
 
-    // Normalize field names
-    return {
-        usageTotalUsd: usageData.usageTotalUsd ?? (usageData.usageTotalUSD ?? 0),
-        limitUsd: limitUsd || (usageData.limitUsd ?? (usageData.limitUSD ?? 0)),
-        ...usageData
-    };
+        return {
+            usageTotalUsd,
+            limitUsd: limitUsd || 5, // Default to 5 if everything fails
+            ...data
+        };
     } catch (e) {
         console.error('Network error fetching Apify usage:', e);
         return { usageTotalUsd: 0, limitUsd: 0, error: true };

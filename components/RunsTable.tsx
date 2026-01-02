@@ -1,6 +1,7 @@
 
 'use client'
 
+import { useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,17 +14,27 @@ import { formatDistanceToNow } from 'date-fns' // Need date-fns or native Intl
 export default function RunsTable({ runs }: { runs: any[] }) {
   const supabase = createClient()
   const router = useRouter()
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const toggleSaved = async (runId: string, current: boolean) => {
     await supabase.from('runs').update({ is_saved: !current }).eq('id', runId)
     router.refresh()
   }
 
-  const deleteRun = async (runId: string) => {
-    if (confirm('Are you sure? This will delete all leads in this run.')) {
-        await supabase.from('runs').delete().eq('id', runId)
-        router.refresh()
+  const handleDeleteClick = (runId: string) => {
+    setDeleteConfirm(runId)
+  }
+
+  const confirmDelete = async () => {
+    if (deleteConfirm) {
+      await supabase.from('runs').delete().eq('id', deleteConfirm)
+      setDeleteConfirm(null)
+      router.refresh()
     }
+  }
+
+  const cancelDelete = () => {
+    setDeleteConfirm(null)
   }
 
   return (
@@ -66,7 +77,15 @@ export default function RunsTable({ runs }: { runs: any[] }) {
                 <Link href={`/leads?run_id=${run.id}`}>
                     <Button variant="outline" size="sm">View</Button>
                 </Link>
-                <Button variant="ghost" size="sm" onClick={() => deleteRun(run.id)} className="text-destructive hover:text-destructive">Delete</Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteClick(run.id)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  Delete
+                </Button>
               </TableCell>
             </TableRow>
           ))}
@@ -79,6 +98,26 @@ export default function RunsTable({ runs }: { runs: any[] }) {
           )}
         </TableBody>
       </Table>
+      
+      {/* Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={cancelDelete}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-2">Confirm Deletion</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure? This will delete all leads in this run.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={cancelDelete}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
