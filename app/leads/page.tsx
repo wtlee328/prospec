@@ -6,6 +6,10 @@ import { Input } from '@/components/ui/input'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Search } from 'lucide-react'
+import LeadsTable from '@/components/LeadsTable'
+import LeadsSearch from '@/components/LeadsSearch'
+import { Suspense } from 'react'
+import { Badge } from '@/components/ui/badge'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +27,7 @@ export default async function LeadsPage(props: { searchParams: Promise<{ run_id?
 
   let dbQuery = supabase
     .from('leads')
-    .select('*, runs(search_criteria, created_at)')
+    .select('*, runs(input_criteria, created_at)')
     .eq('user_id', user.id)
 
   if (runId) {
@@ -31,70 +35,57 @@ export default async function LeadsPage(props: { searchParams: Promise<{ run_id?
   }
 
   if (query) {
-    dbQuery = dbQuery.or(`job_title.ilike.%${query}%,company_name.ilike.%${query}%`)
+    // Split query by comma or space for multi-keyword search
+    // We want an AND relationship between keywords: (Field Group matches K1) AND (Field Group matches K2)
+    const keywords = query.split(/[,\s]+/).filter(k => k.length > 0)
+    keywords.forEach(k => {
+      const fieldMatch = [
+        `job_title.ilike.%${k}%`,
+        `company_name.ilike.%${k}%`,
+        `full_name.ilike.%${k}%`,
+        `first_name.ilike.%${k}%`,
+        `last_name.ilike.%${k}%`,
+        `email.ilike.%${k}%`,
+        `location.ilike.%${k}%`,
+        `industry.ilike.%${k}%`
+      ].join(',')
+      dbQuery = dbQuery.or(fieldMatch)
+    })
   }
 
-  const { data: leads, error } = await dbQuery.limit(500) // basic pagination limit
+  const { data: leads, error } = await dbQuery.limit(500) 
 
-  // Prepare simple search form
-  // We can't put interactive form in server component directly easily without client component or form action.
-  // I'll create a simple search form component or raw form.
-  
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Leads {runId && <span className="text-muted-foreground text-lg ml-2">(Run: {runId.slice(0,8)}...)</span>}</h1>
-        <div className="flex gap-2">
-            <Link href="/runs"><Button variant="outline">Back to Runs</Button></Link>
-            <form className="flex gap-2" action="/leads" method="get">
-                {runId && <input type="hidden" name="run_id" value={runId} />}
-                <Input name="q" placeholder="Search title or company..." defaultValue={query} className="w-[300px]" />
-                <Button type="submit" size="icon"><Search className="h-4 w-4" /></Button>
-            </form>
+      <div className="bg-card border border-border/40 rounded-xl p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">Leads Database</h1>
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                {leads?.length || 0} Total
+              </Badge>
+            </div>
+            <p className="text-muted-foreground text-sm max-w-md">
+              {runId ? `Viewing results for discovery run ${runId.slice(0,8)}` : 'Manage and search through all discovered leads across your campaigns.'}
+            </p>
+            <div className="pt-2">
+              <Link href="/runs">
+                <Button variant="ghost" size="sm" className="h-8 -ml-2 text-muted-foreground hover:text-primary transition-colors">
+                  <Search className="h-3 w-3 mr-2 rotate-180" /> Back to Discoveries
+                </Button>
+              </Link>
+            </div>
+          </div>
+          
+          <Suspense fallback={<div className="h-10 w-[450px] bg-muted animate-pulse rounded-md" />}>
+            <LeadsSearch initialQuery={query} runId={runId} />
+          </Suspense>
         </div>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Run Date</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {leads?.map((lead) => (
-                    <TableRow key={lead.id}>
-                        <TableCell className="font-medium">{lead.first_name} {lead.last_name}</TableCell>
-                        <TableCell>{lead.job_title}</TableCell>
-                        <TableCell>{lead.company_name}</TableCell>
-                        <TableCell>
-                            {lead.email ? (
-                                <a href={`mailto:${lead.email}`} className="text-blue-600 hover:underline">{lead.email}</a>
-                            ) : '-'}
-                        </TableCell>
-                        <TableCell>{lead.location || lead.industry}</TableCell>
-                        <TableCell className="text-right text-muted-foreground text-xs">
-                           {/* Accessing joined runs data needs type assertion or better query */}
-                           {/* For now, just show lead creation date */}
-                           {new Date(lead.created_at).toLocaleDateString()}
-                        </TableCell>
-                    </TableRow>
-                ))}
-                {(!leads || leads.length === 0) && (
-                    <TableRow>
-                        <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                            No leads found.
-                        </TableCell>
-                    </TableRow>
-                )}
-            </TableBody>
-        </Table>
-      </div>
+      <LeadsTable leads={leads || []} />
     </div>
   )
 }
+

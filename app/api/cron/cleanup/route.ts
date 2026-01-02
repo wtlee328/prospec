@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const { error, count } = await supabase
     .from('runs')
     .delete({ count: 'exact' })
-    .match({ is_saved: false })
+    .match({ saved: false })
     .lt('expires_at', now)
 
   if (error) {

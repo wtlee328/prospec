@@ -10,14 +10,22 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns' // Need date-fns or native Intl
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function RunsTable({ runs }: { runs: any[] }) {
   const supabase = createClient()
   const router = useRouter()
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [viewCriteria, setViewCriteria] = useState<any | null>(null)
 
   const toggleSaved = async (runId: string, current: boolean) => {
-    await supabase.from('runs').update({ is_saved: !current }).eq('id', runId)
+    await supabase.from('runs').update({ saved: !current }).eq('id', runId)
     router.refresh()
   }
 
@@ -55,23 +63,38 @@ export default function RunsTable({ runs }: { runs: any[] }) {
           {runs.map((run) => (
             <TableRow key={run.id}>
               <TableCell>{new Date(run.created_at).toLocaleDateString()}</TableCell>
-              <TableCell className="max-w-[200px] truncate">
-                {run.search_criteria?.companyName || run.search_criteria?.jobTitles?.join(', ')}
+              <TableCell>
+                <div className="flex flex-col gap-1 max-w-[220px]">
+                  <span className="truncate text-sm">
+                    {run.input_criteria?.companyDomains?.join(', ') || 
+                     run.input_criteria?.companyNames?.join(', ') || 
+                     run.input_criteria?.jobTitles?.join(', ') || 
+                     'No primary criteria'}
+                  </span>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="p-0 h-auto text-[10px] w-fit text-primary/70 hover:text-primary"
+                    onClick={() => setViewCriteria(run.input_criteria)}
+                  >
+                    Show All
+                  </Button>
+                </div>
               </TableCell>
               <TableCell>
                 <Badge variant={run.status === 'completed' ? 'default' : run.status === 'failed' ? 'destructive' : 'secondary'}>
                   {run.status}
                 </Badge>
               </TableCell>
-              <TableCell>{run.lead_count}</TableCell>
+              <TableCell>{run.number_of_leads}</TableCell>
               <TableCell>
                 <Switch 
-                    checked={run.is_saved} 
-                    onCheckedChange={() => toggleSaved(run.id, run.is_saved)} 
+                    checked={run.saved} 
+                    onCheckedChange={() => toggleSaved(run.id, run.saved)} 
                 />
               </TableCell>
               <TableCell>
-                {run.is_saved ? 'Never' : run.expires_at ? new Date(run.expires_at).toLocaleDateString() : '-'}
+                {run.saved ? 'Never' : run.expires_at ? new Date(run.expires_at).toLocaleDateString() : '-'}
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Link href={`/leads?run_id=${run.id}`}>
@@ -99,6 +122,62 @@ export default function RunsTable({ runs }: { runs: any[] }) {
         </TableBody>
       </Table>
       
+      {/* Criteria View Dialog */}
+      <Dialog open={!!viewCriteria} onOpenChange={(open) => !open && setViewCriteria(null)}>
+        <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Run Criteria</DialogTitle>
+            <DialogDescription>
+              Structured breakdown of search parameters used for this run.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-2 space-y-6">
+            {Object.entries(viewCriteria || {})
+              .filter(([_, value]) => {
+                if (value === null || value === undefined || value === '') return false;
+                if (Array.isArray(value) && value.length === 0) return false;
+                return true;
+              })
+              .map(([key, value]) => {
+                const label = key
+                  .replace(/([A-Z])/g, ' $1')
+                  .replace(/^./, (str) => str.toUpperCase())
+                  .replace('Input', '')
+                  .trim();
+
+                return (
+                  <div key={key} className="space-y-2">
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+                      {label}
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.isArray(value) ? (
+                        value.map((v, i) => (
+                          <Badge 
+                            key={i} 
+                            variant="secondary" 
+                            className="px-3 py-1 rounded-full bg-secondary/50 border-secondary-foreground/10 text-xs font-medium"
+                          >
+                            {String(v)}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge 
+                          variant="secondary" 
+                          className="px-3 py-1 rounded-full bg-secondary/50 border-secondary-foreground/10 text-xs font-medium"
+                        >
+                          {String(value)}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Confirmation Dialog */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={cancelDelete}>

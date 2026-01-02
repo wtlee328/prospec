@@ -36,11 +36,12 @@ export interface Database {
           user_id: string
           apify_run_id: string | null
           status: 'pending' | 'running' | 'completed' | 'failed' | null
-          search_criteria: Json | null
-          is_saved: boolean
+          input_criteria: Json | null
+          saved: boolean
+          run_name: string | null
           archived_at: string | null
           expires_at: string | null
-          lead_count: number
+          number_of_leads: number
           created_at: string
         }
         Insert: {
@@ -48,11 +49,12 @@ export interface Database {
           user_id: string
           apify_run_id?: string | null
           status?: 'pending' | 'running' | 'completed' | 'failed' | null
-          search_criteria?: Json | null
-          is_saved?: boolean
+          input_criteria?: Json | null
+          saved?: boolean
+          run_name?: string | null
           archived_at?: string | null
           expires_at?: string | null
-          lead_count?: number
+          number_of_leads?: number
           created_at?: string
         }
         Update: {
@@ -60,11 +62,12 @@ export interface Database {
           user_id?: string
           apify_run_id?: string | null
           status?: 'pending' | 'running' | 'completed' | 'failed' | null
-          search_criteria?: Json | null
-          is_saved?: boolean
+          input_criteria?: Json | null
+          saved?: boolean
+          run_name?: string | null
           archived_at?: string | null
           expires_at?: string | null
-          lead_count?: number
+          number_of_leads?: number
           created_at?: string
         }
       }
@@ -81,6 +84,17 @@ export interface Database {
           industry: string | null
           location: string | null
           linkedin_url: string | null
+          city: string | null
+          state: string | null
+          country: string | null
+          company_domain: string | null
+          company_phone: string | null
+          company_website: string | null
+          keywords: string | null
+          seniority_level: string | null
+          functional_level: string | null
+          company_annual_revenue: string | null
+          company_size: string | null
           raw_data: Json | null
           created_at: string
         }
@@ -96,6 +110,17 @@ export interface Database {
           industry?: string | null
           location?: string | null
           linkedin_url?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          company_domain?: string | null
+          company_phone?: string | null
+          company_website?: string | null
+          keywords?: string | null
+          seniority_level?: string | null
+          functional_level?: string | null
+          company_annual_revenue?: string | null
+          company_size?: string | null
           raw_data?: Json | null
           created_at?: string
         }
@@ -111,6 +136,17 @@ export interface Database {
           industry?: string | null
           location?: string | null
           linkedin_url?: string | null
+          city?: string | null
+          state?: string | null
+          country?: string | null
+          company_domain?: string | null
+          company_phone?: string | null
+          company_website?: string | null
+          keywords?: string | null
+          seniority_level?: string | null
+          functional_level?: string | null
+          company_annual_revenue?: string | null
+          company_size?: string | null
           raw_data?: Json | null
           created_at?: string
         }
