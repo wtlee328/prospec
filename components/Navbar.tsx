@@ -43,15 +43,17 @@ export default async function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <div className={cn(
-                "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border bg-secondary/30",
-                !isApifyBalance && "opacity-50"
-              )}>
-                <Wallet className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold tabular-nums">
-                  {isApifyBalance ? `$${balance.toFixed(2)}` : 'N/A'}
-                </span>
-              </div>
+              <Link href="/" className="hover:opacity-80 transition-opacity">
+                <div className={cn(
+                  "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border bg-secondary/30",
+                  !isApifyBalance && "opacity-50"
+                )}>
+                  <Wallet className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-semibold tabular-nums">
+                    {isApifyBalance ? `$${balance.toFixed(2)}` : 'N/A'}
+                  </span>
+                </div>
+              </Link>
               
               <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
 

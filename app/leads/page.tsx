@@ -47,7 +47,8 @@ export default async function LeadsPage(props: { searchParams: Promise<{ run_id?
         `last_name.ilike.%${k}%`,
         `email.ilike.%${k}%`,
         `location.ilike.%${k}%`,
-        `industry.ilike.%${k}%`
+        `industry.ilike.%${k}%`,
+        `created_at.cast.text.ilike.%${k}%`
       ].join(',')
       dbQuery = dbQuery.or(fieldMatch)
     })
